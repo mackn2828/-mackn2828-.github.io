@@ -1001,8 +1001,17 @@
     //   B) Discord (simple alerts): create a webhook in any Discord channel
     //      (channel → Edit → Integrations → Webhooks → New Webhook → Copy URL)
     //      and paste it below.
-    const FIREBASE_CONFIG=null;      // [SETUP] paste your firebaseConfig object here, or keep null
-    const DISCORD_WEBHOOK_URL='https://discord.com/api/webhooks/1534364503045701722/ZhwZDAWGHu2mbEcDJs1JMv7Z6QWf6-kPE87I8jmLyyFWDeHyQd3akI8LIXIRkkuDLioj';    // [SETUP] paste a Discord webhook URL here, or leave ''
+    const FIREBASE_CONFIG= const firebaseConfig = {
+  apiKey: "AIzaSyDobmSxv1JLXigznHDDhnPPyRKlCR7yR38",
+  authDomain: "mack-ticket.firebaseapp.com",
+  databaseURL: "https://mack-ticket-default-rtdb.firebaseio.com",
+  projectId: "mack-ticket",
+  storageBucket: "mack-ticket.firebasestorage.app",
+  messagingSenderId: "212246224105",
+  appId: "1:212246224105:web:30f4fd600aae10c0b92478",
+  measurementId: "G-W9KK2GXY3E"
+};;      // [SETUP] paste your firebaseConfig object here, or keep null
+    const DISCORD_WEBHOOK_URL='';    //  paste a Discord webhook URL here, or leave ''
     const ADMIN_PASSCODE='';         // [SETUP] optional: lock the inbox with a passcode (leave '' for no lock)
 
     const backendNote=document.querySelector('#backend-note');
