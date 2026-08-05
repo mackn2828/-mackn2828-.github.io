@@ -3,7 +3,6 @@
   ═══════════════════════════════════════════════════════════════════
   MACK — WEBSITES · DISCORD BOTS · SCRIPTS
   ═══════════════════════════════════════════════════════════════════
-
   ═══════════════════════════════════════════════════════════════════
 -->
 <html lang="en">
@@ -205,6 +204,10 @@
     .speed strong{font-weight:600}
     .stats-note{font:10px 'Jost';letter-spacing:1px;color:#8a8579;text-transform:uppercase;margin:16px 0 0}
     .stats-note b{color:var(--neon)}
+    .backend-note{font:11px 'Jost';line-height:1.7;color:#8a8579;border:1px dashed #8a6d2f;background:rgba(138,109,47,.08);padding:12px 14px;margin-bottom:16px}
+    .backend-note b{color:var(--neon)}
+    .ticket-lock{border:1px dashed #2e2a20;background:rgba(255,255,255,.02);padding:16px;margin-bottom:18px}
+    .ticket-lock .track-label{color:var(--neon)}
     @media(max-width:700px){.modal .m-img{height:170px}.astra-layout{grid-template-columns:1fr;gap:36px}.server-actions{flex-direction:column}}
     @keyframes marquee{to{transform:translateX(-50%)}}@keyframes pulse{50%{transform:scale(1.08);opacity:.7}}@keyframes blink{50%{opacity:.35}}@keyframes scrollDrop{0%{transform:scaleY(0);transform-origin:top}45%{transform:scaleY(1);transform-origin:top}55%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}@keyframes loadbar{0%{transform:translateX(-110%)}100%{transform:translateX(210%)}}
     @media(max-width:700px){.menu-toggle{display:block}nav ul{display:none;position:absolute;left:0;top:78px;width:100%;padding:20px 24px 25px;background:#0a0a0df7;border-bottom:2px solid var(--green);flex-direction:column;gap:19px}nav ul.open{display:flex}nav a{font-size:12px}.play{display:inline-block}.hero{min-height:700px;align-items:end;padding-bottom:70px}.speed{display:none}.sub{transform:none}.hero-actions{flex-wrap:wrap}.about-layout{grid-template-columns:1fr;gap:45px}.skill-grid,.project-grid,.t-grid,.price-grid,.process-row,.stats{grid-template-columns:1fr}.section-head{align-items:start;flex-direction:column;gap:16px}.section-number{display:none}.form-fields{grid-template-columns:1fr}section{padding-top:85px;padding-bottom:85px}footer{gap:15px;flex-direction:column}.hero:before{right:24px;top:110px}.contact-layout,.faq-layout,.lab-layout{grid-template-columns:1fr;gap:36px}.contact-intro,.faq-intro{position:static}.faq-question{font-size:20px}.project-card .thumb{height:180px}.about-img img{aspect-ratio:16/10}.scroll-hint{display:none}}
@@ -530,14 +533,24 @@
         <div class="section-number">08 — ORDERS</div>
       </div>
       <div class="ticket-panel reveal">
-        <div class="ticket-bar" aria-label="Ticket counts">
-          <span class="ticket-count"><b id="ticket-total">0</b>TOTAL</span>
-          <span class="ticket-count"><b id="ticket-new">0</b>NEW</span>
-          <span class="ticket-count"><b id="ticket-open">0</b>IN PROGRESS</span>
-          <span class="ticket-count"><b id="ticket-done">0</b>DONE</span>
+        <p class="backend-note" id="backend-note" hidden></p>
+        <div class="ticket-lock" id="ticket-lock" hidden>
+          <b class="track-label">This inbox is locked</b>
+          <div class="track-row">
+            <input id="lock-input" type="password" placeholder="Enter passcode…" aria-label="Passcode">
+            <button id="lock-go" type="button">Unlock</button>
+          </div>
         </div>
-        <div class="ticket-list" id="ticket-list"></div>
-        <p class="ticket-empty" id="ticket-empty">No tickets yet — when someone sends a message through the form, it shows up here as a ticket. Use the status buttons to track it, or delete it once it's done.</p>
+        <div id="ticket-content">
+          <div class="ticket-bar" aria-label="Ticket counts">
+            <span class="ticket-count"><b id="ticket-total">0</b>TOTAL</span>
+            <span class="ticket-count"><b id="ticket-new">0</b>NEW</span>
+            <span class="ticket-count"><b id="ticket-open">0</b>IN PROGRESS</span>
+            <span class="ticket-count"><b id="ticket-done">0</b>DONE</span>
+          </div>
+          <div class="ticket-list" id="ticket-list"></div>
+          <p class="ticket-empty" id="ticket-empty">No tickets yet — when someone sends a message through the form, it shows up here as a ticket. Use the status buttons to track it, or delete it once it's done.</p>
+        </div>
       </div>
     </section>
 
@@ -718,11 +731,14 @@
       });
       if(firstInvalid){firstInvalid.focus();return;}
       const messages=JSON.parse(localStorage.getItem('mackMessages')||'[]');
-      const ticketId=`msg-${Date.now()}`;
+      const ticketId=`msg-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
       const now=new Date().toLocaleString();
-      messages.push({id:ticketId,name:form.name.value.trim(),email:form.email.value.trim(),topic:form.topic.value,message:form.message.value.trim(),sentAt:now,status:'new',thread:[{who:'customer',text:form.message.value.trim(),at:now}]});
+      const newTicket={id:ticketId,name:form.name.value.trim(),email:form.email.value.trim(),topic:form.topic.value,message:form.message.value.trim(),sentAt:now,status:'new',thread:[{who:'customer',text:form.message.value.trim(),at:now}]};
+      messages.push(newTicket);
       localStorage.setItem('mackMessages',JSON.stringify(messages));
       renderTickets();
+      syncTicket(newTicket);
+      notifyDiscord(`New ticket — ${newTicket.topic}`,[{name:'Customer',value:`${newTicket.name} (${newTicket.email})`},{name:'Message',value:newTicket.message}]);
       const trackLink=form.querySelector('#track-link');
       const trackUrl=`${location.href.split('#')[0].split('?')[0]}?ticket=${ticketId}`;
       if(trackLink){trackLink.href=trackUrl;trackLink.textContent='your ticket link';}
@@ -831,7 +847,7 @@
       document.querySelector('#ticket-new').textContent=counts.new;
       document.querySelector('#ticket-open').textContent=counts.progress;
       document.querySelector('#ticket-done').textContent=counts.done;
-      const tickets=all.slice().reverse();
+      const tickets=all.slice().sort((a,b)=>(Number(String(b.id).match(/\d+/)?.[0]||0))-(Number(String(a.id).match(/\d+/)?.[0]||0)));
       ticketList.innerHTML=tickets.map((t)=>{
         const status=t.status||'new';
         return `<article class="ticket ${status}">
@@ -865,6 +881,7 @@
           saveTickets(tickets.filter((t)=>t.id!==id));
           showToast('Ticket deleted.')();
           renderTickets();
+          deleteRemoteTicket(id);
         }else{
           btn.dataset.arm='1';
           btn.textContent='Sure?';
@@ -876,6 +893,7 @@
       ticket.status=btn.dataset.status;
       saveTickets(tickets);
       renderTickets();
+      syncTicket(ticket);
     });
     renderTickets();
 
@@ -937,9 +955,11 @@
       seedThread(t);
       t.thread.push({who:activeAuthor,text,at:new Date().toLocaleString()});
       saveTickets(tickets);
+      syncTicket(t);
       tmInput.value='';
       renderThread();
       showToast(activeAuthor==='you'?'Reply sent to the customer.':'Reply sent to Mack.')();
+      notifyDiscord(`Reply on ${t.topic} ticket`,[{name:activeAuthor==='you'?'Mack':'Customer',value:text}]);
     };
     tmSend.addEventListener('click',sendReply);
     tmInput.addEventListener('keydown',(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendReply();}});
@@ -968,6 +988,99 @@
     trackInput.addEventListener('keydown',(e)=>{if(e.key==='Enter')trackGo.click();});
     const ticketParam=new URLSearchParams(location.search).get('ticket');
     if(ticketParam)setTimeout(()=>openTicketModal(ticketParam,true),700);
+
+    // ════ [SETUP] SHARED BACKEND ════
+    // By default tickets are saved in THIS browser only, so other people's
+    // tickets never reach this page. To see tickets from every device, connect
+    // one of the free options below:
+    //   A) Firebase (full sync — shared inbox + cross-device replies):
+    //      https://console.firebase.google.com → Create project → Build →
+    //      Firestore Database → Create database (Test mode) → ⚙ Project settings
+    //      → Your apps → Add app (Web) → copy the firebaseConfig object and
+    //      paste it below instead of `null`.
+    //   B) Discord (simple alerts): create a webhook in any Discord channel
+    //      (channel → Edit → Integrations → Webhooks → New Webhook → Copy URL)
+    //      and paste it below.
+    const FIREBASE_CONFIG=null;      // [SETUP] paste your firebaseConfig object here, or keep null
+    const DISCORD_WEBHOOK_URL='https://discord.com/api/webhooks/1534364503045701722/ZhwZDAWGHu2mbEcDJs1JMv7Z6QWf6-kPE87I8jmLyyFWDeHyQd3akI8LIXIRkkuDLioj';    // [SETUP] paste a Discord webhook URL here, or leave ''
+    const ADMIN_PASSCODE='';         // [SETUP] optional: lock the inbox with a passcode (leave '' for no lock)
+
+    const backendNote=document.querySelector('#backend-note');
+    let firestoreDb=null;
+    let firestoreUnsub=null;
+    const ticketDoc=(id)=>firestoreDb.collection('tickets').doc(id);
+    const syncTicket=(t)=>{if(firestoreDb)ticketDoc(t.id).set(t).catch(()=>{});};
+    const deleteRemoteTicket=(id)=>{if(firestoreDb)ticketDoc(id).delete().catch(()=>{});};
+    const notifyDiscord=(title,fields)=>{
+      if(!DISCORD_WEBHOOK_URL)return;
+      fetch(DISCORD_WEBHOOK_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[{title,color:13476327,fields,timestamp:new Date().toISOString()}]})}).catch(()=>{});
+    };
+    const updateBackendNote=()=>{
+      if(!backendNote)return;
+      if(FIREBASE_CONFIG&&firestoreDb){
+        backendNote.innerHTML=ADMIN_PASSCODE
+          ?'<b>Live sync on.</b> Tickets from every device now appear here automatically.'
+          :'<b>Live sync on.</b> Tickets from every device appear here — but <b>no passcode is set</b>, so visitors can see the inbox too. Set ADMIN_PASSCODE in the [SETUP] block to lock it.';
+      }else if(DISCORD_WEBHOOK_URL){
+        backendNote.innerHTML='<b>Discord alerts on.</b> New tickets and replies get posted to your Discord channel. (The inbox below still only shows this browser — use Firebase for a fully shared inbox.)';
+      }else{
+        backendNote.innerHTML='<b>Local only.</b> Tickets are saved in this browser, so other people\'s tickets won\'t show up here. To fix that, search index.html for <b>[SETUP]</b> and connect Firebase (free) or a Discord webhook.';
+      }
+      backendNote.hidden=false;
+    };
+    const initBackend=()=>{
+      updateBackendNote();
+      if(!FIREBASE_CONFIG)return;
+      const load=(src)=>new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+      Promise.all([
+        load('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js'),
+        load('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js')
+      ]).then(()=>{
+        try{
+          if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+          firestoreDb=firebase.firestore();
+          let firstSync=true;
+          firestoreUnsub=firestoreDb.collection('tickets').onSnapshot((snap)=>{
+            const remote=[];
+            snap.forEach((doc)=>remote.push(doc.data()));
+            if(firstSync){
+              // first snapshot: keep any local tickets not yet in the cloud (e.g. made before connecting)
+              const local=getTickets();
+              local.forEach((t)=>{if(!remote.some((r)=>r.id===t.id))remote.push(t);});
+              firstSync=false;
+            }
+            localStorage.setItem('mackMessages',JSON.stringify(remote));
+            renderTickets();
+          });
+          updateBackendNote();
+        }catch(e){console.warn('Firebase setup error — check the [SETUP] config:',e);}
+      }).catch(()=>console.warn('Could not load the Firebase SDK.'));
+    };
+
+    // Optional passcode lock for the ticket inbox
+    const ticketLock=document.querySelector('#ticket-lock');
+    const ticketContent=document.querySelector('#ticket-content');
+    const lockInput=document.querySelector('#lock-input');
+    const lockGo=document.querySelector('#lock-go');
+    if(ADMIN_PASSCODE&&ticketLock&&ticketContent){
+      if(sessionStorage.getItem('ticketsUnlocked')!=='1'){
+        ticketContent.hidden=true;
+        ticketLock.hidden=false;
+      }
+      lockGo.addEventListener('click',()=>{
+        if(lockInput.value===ADMIN_PASSCODE){
+          sessionStorage.setItem('ticketsUnlocked','1');
+          ticketContent.hidden=false;
+          ticketLock.hidden=true;
+          showToast('Inbox unlocked.')();
+        }else{
+          showToast('Wrong passcode.')();
+        }
+      });
+      lockInput.addEventListener('keydown',(e)=>{if(e.key==='Enter')lockGo.click();});
+    }
+
+    initBackend();
 
     // FAQ accordion
     document.querySelectorAll('.faq-question').forEach((button)=>{
